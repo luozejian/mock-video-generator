@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { InputNumber } from '@douyinfe/semi-ui';
 import { Video, FileVideo, Download, AlertCircle, Clock, Zap, Settings, Globe, CheckCircle2 } from 'lucide-react';
 
 // --- 类型定义 ---
@@ -161,12 +162,15 @@ export default function App() {
         }
       }
     } else {
-      const imageData = ctx.createImageData(width, height);
-      const buffer = new Uint32Array(imageData.data.buffer);
-      for (let i = 0; i < buffer.length; i++) {
-        buffer[i] = (Math.random() * 0xFFFFFFFF) >>> 0;
-      }
-      ctx.putImageData(imageData, 0, 0);
+      // 使用随时间平滑变化的渐变背景（低熵、可压缩），
+      // 让编码器能遵守设定码率，录制结果稳定小于目标，从而由尾部填充精确补足大小。
+      const seconds = performance.now() / 1000;
+      const hue = (seconds * 40) % 360;
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, `hsl(${hue}, 70%, 45%)`);
+      gradient.addColorStop(1, `hsl(${(hue + 90) % 360}, 70%, 30%)`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
     }
 
     ctx.font = `bold ${Math.max(24, width / 25)}px sans-serif`;
@@ -251,8 +255,12 @@ export default function App() {
           const padding = new Uint8Array(paddingSize);
           finalBlob = new Blob([videoBlob, padding], { type: mimeType });
           padded = true;
-        } else {
-          console.warn("Video generated larger than target, cannot pad exactly. Try reducing duration or resolution.");
+        } else if (videoBlob.size > targetBytes) {
+          // 录制结果超过目标：截断到精确字节数以保证大小准确。
+          // 注意：截断会破坏视频容器结构，文件可能无法完整播放，但大小精确匹配。
+          console.warn(`Video (${videoBlob.size}) exceeds target (${targetBytes}). Truncating. Reduce duration/resolution for a playable result.`);
+          finalBlob = new Blob([videoBlob.slice(0, targetBytes)], { type: mimeType });
+          padded = true;
         }
 
         const url = URL.createObjectURL(finalBlob);
@@ -325,7 +333,7 @@ export default function App() {
         });
         setProgress(100);
         setStatus('done');
-      } catch (err) {
+      } catch {
         setErrorMsg(t.errorMemory);
         setStatus('error');
       }
@@ -406,13 +414,14 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">{t.targetSize}</label>
-                <input
-                  type="number"
+                <InputNumber
                   min={1}
-                  max={100}
+                  max={mode === 'real' ? 500 : 2048}
+                  step={1}
+                  precision={0}
                   value={config.sizeMB}
-                  onChange={(e) => setConfig({ ...config, sizeMB: Number(e.target.value) })}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                  onNumberChange={(value) => setConfig({ ...config, sizeMB: value })}
+                  style={{ width: '100%' }}
                 />
                 {mode === 'real' && (
                   <p className="text-xs text-blue-600 flex items-center gap-1 font-medium bg-blue-50 p-1 rounded">
@@ -425,32 +434,41 @@ export default function App() {
                 <>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">{t.duration}</label>
-                    <input
-                      type="number"
+                    <InputNumber
                       min={1}
                       max={60}
+                      step={1}
+                      precision={0}
                       value={config.duration}
-                      onChange={(e) => setConfig({ ...config, duration: Number(e.target.value) })}
-                      className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                      onNumberChange={(value) => setConfig({ ...config, duration: value })}
+                      style={{ width: '100%' }}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">{t.resolution}</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
+                    <div className="flex gap-2 items-center">
+                      <InputNumber
                         placeholder={t.widthPlaceholder}
+                        min={16}
+                        max={3840}
+                        step={2}
+                        precision={0}
                         value={config.width}
-                        onChange={(e) => setConfig({ ...config, width: Number(e.target.value) })}
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                        onNumberChange={(value) => setConfig({ ...config, width: value })}
+                        className="flex-1"
+                        style={{ width: '100%' }}
                       />
-                      <span className="self-center text-gray-400">x</span>
-                      <input
-                        type="number"
+                      <span className="text-gray-400">x</span>
+                      <InputNumber
                         placeholder={t.heightPlaceholder}
+                        min={16}
+                        max={2160}
+                        step={2}
+                        precision={0}
                         value={config.height}
-                        onChange={(e) => setConfig({ ...config, height: Number(e.target.value) })}
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                        onNumberChange={(value) => setConfig({ ...config, height: value })}
+                        className="flex-1"
+                        style={{ width: '100%' }}
                       />
                     </div>
                   </div>
