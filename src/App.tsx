@@ -420,7 +420,7 @@ export default function App() {
                   step={1}
                   precision={0}
                   value={config.sizeMB}
-                  onChange={(value) => setConfig({ ...config, sizeMB: Number(value) })}
+                  onNumberChange={(value) => setConfig({ ...config, sizeMB: value })}
                   style={{ width: '100%' }}
                 />
                 {mode === 'real' && (
@@ -440,7 +440,7 @@ export default function App() {
                       step={1}
                       precision={0}
                       value={config.duration}
-                      onChange={(value) => setConfig({ ...config, duration: Number(value) })}
+                      onNumberChange={(value) => setConfig({ ...config, duration: value })}
                       style={{ width: '100%' }}
                     />
                   </div>
@@ -454,7 +454,7 @@ export default function App() {
                         step={2}
                         precision={0}
                         value={config.width}
-                        onChange={(value) => setConfig({ ...config, width: Number(value) })}
+                        onNumberChange={(value) => setConfig({ ...config, width: value })}
                         className="flex-1"
                         style={{ width: '100%' }}
                       />
@@ -466,7 +466,7 @@ export default function App() {
                         step={2}
                         precision={0}
                         value={config.height}
-                        onChange={(value) => setConfig({ ...config, height: Number(value) })}
+                        onNumberChange={(value) => setConfig({ ...config, height: value })}
                         className="flex-1"
                         style={{ width: '100%' }}
                       />
